@@ -153,11 +153,17 @@ static int setifcall(int s, char *ifn, char *name)
 {
 	char call[7];
 	struct ifreq ifr;
+	size_t len;
 
 	if (ax25_aton_entry(name, call) == -1)
 		return 1;
 
-	strcpy(ifr.ifr_name, ifn);
+	len = strlen(ifn);
+	if (len >= sizeof(ifr.ifr_name)) {
+		fprintf(stderr, "axparms: interface name too long - %s\n", ifn);
+		return 1;
+	}
+	memcpy(ifr.ifr_name, ifn, len + 1);
 	memcpy(ifr.ifr_hwaddr.sa_data, call, 7);
 	ifr.ifr_hwaddr.sa_family = AF_AX25;
 
