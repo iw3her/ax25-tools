@@ -1,3 +1,11 @@
+ax25-tools (0.0.10-rc5+git20250922+c5a9f7f-1) UNRELEASED; urgency=medium
+
+  * Import LinuxHam snapshot c5a9f7f (2025-09-22).
+  * Drop Debian time64 and spelling patches already included upstream.
+  * Build the LinuxHam Git checkout through the Debian Autotools sequence.
+
+ -- Lorenzo <iw3her.lorenzo@gmail.com>  Thu, 01 Oct 2026 21:54:18 +0200
+
 ax25-tools (0.0.10-rc5+git20230513+d3e6d4f-3) unstable; urgency=medium
 
   * Patch long to time_t for time64

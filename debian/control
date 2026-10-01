@@ -5,7 +5,8 @@ Uploaders: Patrick Ouellette <pouelle@debian.org>,
            Francois Marier <francois@debian.org>,
 Section: hamradio
 Priority: optional
-Build-Depends: debhelper-compat (= 13)
+Build-Depends: debhelper-compat (= 13),
+               dh-autoreconf
 Build-Depends-Arch: libncurses-dev,
                zlib1g-dev,
                libfltk1.3-dev,
