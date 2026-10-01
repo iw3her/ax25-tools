@@ -72,6 +72,11 @@ static int bcast_config_load_ports(void)
 		if (strlen(buffer) == 0 || buffer[0] == '#')
 			continue;
 
+		if (port_count >= (int)(sizeof(port_list) / sizeof(port_list[0]))) {
+			fprintf(stderr, "netromd: too many broadcast ports\n");
+			return -1;
+		}
+
 		if (sscanf(buffer, "%31s %d %d %d %d",
 				port,
 				&port_list[port_count].minimum_obs,
