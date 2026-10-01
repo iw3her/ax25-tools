@@ -72,12 +72,12 @@ static int bcast_config_load_ports(void)
 		if (strlen(buffer) == 0 || buffer[0] == '#')
 			continue;
 
-		if (sscanf(buffer, "%s %d %d %d %d",
+		if (sscanf(buffer, "%31s %d %d %d %d",
 				port,
 				&port_list[port_count].minimum_obs,
 				&port_list[port_count].default_qual,
 				&port_list[port_count].worst_qual,
-				&port_list[port_count].verbose) == -1) {
+				&port_list[port_count].verbose) != 5) {
 			fprintf(stderr, "netromd: unable to parse: %s", buffer);
 			return -1;
 		}
