@@ -1,0 +1,53 @@
+Source: ax25-tools
+Maintainer: Debian Hamradio Maintainers <debian-hams@lists.debian.org>
+Uploaders: Patrick Ouellette <pouelle@debian.org>,
+           Dave Hibberd <hibby@debian.org>,
+           Francois Marier <francois@debian.org>,
+Section: hamradio
+Priority: optional
+Build-Depends: debhelper-compat (= 13)
+Build-Depends-Arch: libncurses-dev,
+               zlib1g-dev,
+               libfltk1.3-dev,
+               libxext-dev,
+               libx11-dev,
+               libax25-dev,
+               libxt-dev,
+               libxi-dev,
+               libice-dev,
+               libsm-dev,
+               libgl-dev
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Vcs-Browser: https://salsa.debian.org/debian-hamradio-team/ax25-tools
+Vcs-Git: https://salsa.debian.org/debian-hamradio-team/ax25-tools.git
+Homepage: https://linux-ax25.in-berlin.de/wiki/Main_Page
+
+Package: ax25-tools
+Architecture: linux-any
+Depends: ${misc:Depends},
+         ${shlibs:Depends}
+Recommends: net-tools
+Suggests: talkd,
+          ax25-apps,
+          login
+Description: tools for AX.25 interface configuration
+ These are hamradio specific tools for setting up and configuring hamradio
+ ports that use AX.25 Net/ROM or ROSE network protocols.
+ .
+ This package is created separately for those who do not want to install tools
+ that need X to run.
+
+Package: ax25-xtools
+Architecture: linux-any
+Depends: ${misc:Depends},
+         ${shlibs:Depends}
+Suggests: talkd,
+          ax25-apps,
+          ax25-tools
+Description: tools for AX.25 interface configuration -- X11-based
+ These are hamradio specific tools for setting up and configuring hamradio
+ ports that use AX.25 Net/ROM or ROSE network protocols.
+ .
+ This package is created separately for those who want to install tools
+ that need X to run.

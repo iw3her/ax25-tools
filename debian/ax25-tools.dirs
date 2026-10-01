@@ -1,0 +1,4 @@
+usr/bin
+usr/sbin
+var/ax25
+var/ax25/mheard

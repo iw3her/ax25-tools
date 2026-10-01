@@ -1,0 +1,3 @@
+version=4
+https://linux-ax25.in-berlin.de/pub/ax25-tools/ax25-tools-(\d.*)\.(?:zip|tgz|tbz|txz|(?:tar\.(?:gz|bz2|xz)))
+

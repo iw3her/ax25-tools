@@ -1,0 +1,171 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: ax25-tools
+Upstream-Contact: Thomas Osterried <thomas@osterried.de>
+Source: https://linux-ax25.in-berlin.de/cgit/ax25-tools.git/
+
+Files: *
+Copyright: 1999-2024 Ralf Baechle <ralf@linux-mips.org>
+ 1999-2024 Thomas Osterried <thomas@osterried.de>
+ 1996-2001 Jonathan Naylor G4KLX <g4klx@g4klx.demon.co.uk>
+License: GPL-2
+
+Files: debian/*
+Copyright:
+ Craig Small <csmall@debian.org>,
+ Christoph Berg <myon@debian.org>,
+ Daniele Forsi <iu5hkx@gmail.com>,
+ Dave Hibberd <hibby@debian.org>,
+ Patrick Ouellette <pouelle@debian.org>,
+ Francois Marier <francois@debian.org>,
+ Iain Learmonth <irl@debian.org>,
+ Colin Tuckley <colint@debian.org>
+License: GPL-2
+
+Files: ax25/axgetput/axgetput.h
+ ax25/axgetput/includes.h
+ ax25/axgetput/proto_bin.c
+ ax25/axgetput/proto_bin.h
+ ax25/axgetput/util.c
+ ax25/axgetput/util.h
+Copyright: 2002, Thomas Osterried DL9SAU <thomas@x-berg.in-berlin.de>
+License: GPL-1
+
+Files: hdlcutil/baycom.9
+ hdlcutil/hdlcdrv.9
+ hdlcutil/sethdlc.8
+ hdlcutil/smdiag.8
+ hdlcutil/smmixer.8
+ hdlcutil/soundmodem.9
+ hdlcutil/fl/xfhdlcst_main.cxx
+ hdlcutil/fl/xfsmdiag_main.cxx
+ hdlcutil/sethdlc.c
+ hdlcutil/smdiag.c
+ hdlcutil/smmixer.c
+Copyright: 1996, Thomas Sailer <t.sailer@alumni.ethz.ch>
+License: GPL-1
+
+Files: hdlcutil/fl/xfsmdiag_main.h
+ hdlcutil/hdrvcomm.c
+ hdlcutil/hdrvcomm.h
+ hdlcutil/usersmdiag.h
+ kiss/net2kiss.c
+ hdlcutil/fl/xfhdlcchpar_main.cxx
+ hdlcutil/fl/xfsmmixer_main.cxx
+Copyright: 1996-2000, Thomas Sailer <t.sailer@alumni.ethz.ch>
+License: GPL-2+
+
+Files: ax25/md5.h
+ ax25/md5.c
+Copyright: 1990, RSA Data Security, Inc.
+License: RSA-MD5
+
+Files: ax25/axgetput/axgetput.c
+Copyright: 2002, Thomas Osterried <thomas@x-berg.in-berlin.de>
+License: GPL-1
+
+Files: tcpip/ttylinkd.c
+ tcpip/ttylinkd.conf.5
+ tcpip/ttylinkd.8
+ tcpip/ttylinkd.README
+ dmascc/dmascc_cfg.8
+Copyright: 1996-2000, Craig Small <csmall@small.dropbear.id.au>
+License: GPL-2+
+
+Files: ax25/ax25d.c
+Copyright: 1995-1996, Darryl L. Miles, G7LED <dlm@frink.demon.co.uk>
+  1996, Jonathan Naylor G4KLX <g4klx@g4klx.demon.co.uk>
+License: GPL-2+
+
+Files: yamdrv/yam.h
+ kiss/kissnetd.c
+ kiss/kissnetd.8
+Copyright: 1998, Frederic Rible F1OAT <frible@teaser.fr>
+License: GPL-2+
+
+Files: yamdrv/yamcfg.c
+ yamdrv/mcs2h.c
+Copyright: 1998, Jean-Paul ROUBELAT <jpr@f6fbb.org>
+License: GPL-2+
+
+Files: ax25/axspawn.c
+ ax25/bpqparms.c
+ ax25/axparms.8
+ ax25/axctl.8
+ ax25/bpqparms.8
+Copyright: 1996 Joerg Reuter DL1BKE <jreuter@poboxes.com>
+License: GPL-2+
+
+Files: dmascc/dmascc_cfg.c
+Copyright: 1997-2000 Klaus Kudielka <oe1kib@oe1xtu.ampr.org>
+License: GPL-2+
+
+Files: ax25/axwrapper.c
+ ax25/rxecho.c
+Copyright: 1996-2001, Tomi Manninen, OH2BNS, <tomi.manninen@hut.fi>.
+License: GPL-2+
+
+Files: 6pack/m6pack.c
+Copyright: 1999, Iñaki Arenaza <iarenaza@escomposlinux.org>
+License: GPL-2
+
+License: GPL-2
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; version 2 of the License.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ On Debian systems, the full text of the license can be found at
+ /usr/share/common-licenses/GPL-2.
+
+License: GPL-2+
+ This program is free software; you can redistribute it
+ and/or modify it under the terms of the GNU General Public
+ License as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later
+ version.
+ .
+ This program is distributed in the hope that it will be
+ useful, but WITHOUT ANY WARRANTY; without even the implied
+ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ PURPOSE.  See the GNU General Public License for more
+ details.
+ .
+ On Debian systems, the full text of the GNU General Public
+ License version 2 can be found in the file
+ `/usr/share/common-licenses/GPL-2'.
+
+License: GPL-1 
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License as published by the
+ Free Software Foundation; either version 1, or (at your option) any later
+ version.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT ANY
+ WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+ PARTICULAR PURPOSE. See the GNU General Public License for more details. 
+ .
+ On Debian systems, the full text of the GNU General Public
+ License can be found in the file `/usr/share/common-licenses/GPL-1'.
+
+
+License: RSA-MD5
+ License to copy and use this software is granted provided that it
+ is identified as the "RSA Data Security, Inc. MD5 Message-Digest
+ Algorithm" in all material mentioning or referencing this software
+ or this function.
+ .
+ License is also granted to make and use derivative works provided
+ that such works are identified as "derived from the RSA Data
+ Security, Inc. MD5 Message-Digest Algorithm" in all material
+ mentioning or referencing the derived work.
+ .
+ RSA Data Security, Inc. makes no representations concerning either
+ the merchantability of this software or the suitability of this
+ software forany particular purpose. It is provided "as is"
+ without express or implied warranty of any kind.
+ These notices must be retained in any copies of any part of this
+ documentation and/or software.

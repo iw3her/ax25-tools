@@ -1,0 +1,344 @@
+ax25-tools (0.0.10-rc5+git20230513+d3e6d4f-3) unstable; urgency=medium
+
+  * Patch long to time_t for time64
+    - Closes: #1091248
+  * d/control
+    - Bumped standards to 4.7.0
+    - Updated b-d for dh-clean compatibility
+  * d/copyright
+
+ -- Dave Hibberd <hibby@debian.org>  Thu, 09 Jan 2025 22:34:47 +0000
+
+ax25-tools (0.0.10-rc5+git20230513+d3e6d4f-2) unstable; urgency=medium
+
+  * Team upload.
+  * Update Homepage and Sources for move to linux-ax25.in-berlin.de
+    See https://linux-ax25.in-berlin.de/wiki/Main_Page
+  * Add login package to Suggests since login is no longer essential.
+    (Closes: #1074097)
+
+ -- tony mancill <tmancill@debian.org>  Sun, 23 Jun 2024 09:57:42 -0700
+
+ax25-tools (0.0.10-rc5+git20230513+d3e6d4f-1) unstable; urgency=medium
+
+  * Update d/copyright to DEP-5 (Closes: #933818)
+  * Update d/control
+    * Recommend net-tools (Closes: #933864)
+    * Update my details
+  * Upstream refresh
+  * d/clean added (Closes: #1043747)
+
+ -- Dave Hibberd <hibby@debian.org>  Sat, 17 Feb 2024 12:19:49 +0000
+
+ax25-tools (0.0.10-rc5+git20190411+3595f87-6) unstable; urgency=medium
+
+  * Team upload.
+
+  [ Dave Hibberd ]
+  * Remove colint as uploader, thanks for all your work
+    - Closes: #990608
+
+  [ Daniele Forsi ]
+  * Override lintian error "non-standard-dir-in-var [var/ax25/]".
+  * Refresh spelling fixes.
+  * Update standards version to 4.6.2, no changes needed.
+
+ -- Christoph Berg <myon@debian.org>  Mon, 09 Jan 2023 12:19:04 +0100
+
+ax25-tools (0.0.10-rc5+git20190411+3595f87-5) unstable; urgency=medium
+
+  [ Christoph Berg ]
+  * Add debian/gitlab-ci.yml.
+
+  [ Francois Marier ]
+  * Bump Standards-Version up to 4.5.1.
+  * Bump debian/watch up to version 4.
+
+ -- Francois Marier <francois@debian.org>  Mon, 18 Jan 2021 21:36:48 -0800
+
+ax25-tools (0.0.10-rc5+git20190411+3595f87-3) unstable; urgency=medium
+
+  * Remove duplicate install of files in debian/rules (closes: #968048).
+  * Move smdiag.8 from ax25-xtools.install to ax25-xtools.manpages.
+
+ -- Francois Marier <francois@debian.org>  Fri, 07 Aug 2020 09:21:23 -0700
+
+ax25-tools (0.0.10-rc5+git20190411+3595f87-2) unstable; urgency=medium
+
+  [ Debian Janitor ]
+  * Set debhelper-compat version in Build-Depends.
+  * Update standards version to 4.5.0, no changes needed.
+
+  [ Francois Marier ]
+  * Bump debcompat-helper to 13.
+  * Add myself to Uploaders.
+  * Ensure all useful files are installed by the binary packages.
+  * Build without root.
+
+ -- Francois Marier <francois@debian.org>  Mon, 03 Aug 2020 14:53:44 -0700
+
+ax25-tools (0.0.10-rc5+git20190411+3595f87-1) experimental; urgency=medium
+
+  * Team upload
+
+  [ Christoph Berg ]
+  * Update Vcs headers for the salsa move.
+
+  [ Iain R. Learmonth ]
+  * New upstream version 0.0.10-rc5+git20190411+3595f87
+  * Compat level bumped to 12
+  * d/patches:
+   - Remove 02-ptsname-prototype.patch (applied upstream)
+   - Remove 03-string_literal.patch (applied upstream)
+   - Refreshed spelling fixes
+  * d/control:
+   - Removed reference to legacy package ax25-utils
+   - Updated standards version to 4.4.0
+
+ -- Iain R. Learmonth <irl@debian.org>  Sat, 03 Aug 2019 22:18:41 +0100
+
+ax25-tools (0.0.10-rc4-3) unstable; urgency=medium
+
+  * Removed init.d from debian/ folder to prevent dpkg running postinst/rm
+     scripts
+     - Closes: #882419
+
+ -- Dave Hibberd <d@vehibberd.com>  Mon, 18 Dec 2017 21:50:18 +0000
+
+ax25-tools (0.0.10-rc4-2) unstable; urgency=medium
+
+  * Add patch 02-ptsname-prototype.patch to fix segfault at runtime
+    - Closes: #878322
+  * Adds standards 4.1.1 and dh compat 10
+    - Updated debian/control
+    - Updated debian/compat
+  * Updated hardening
+    - Cleaned up debian/rules
+    - New patch 03-string_literal.patch
+      - Clears -Werrors errors due to passing string literals
+  * Updated 01-spelling-fixes.patch to account for other spelling errors
+
+ -- Dave Hibberd <d@vehibberd.com>  Mon, 30 Oct 2017 23:30:38 +0000
+
+ax25-tools (0.0.10-rc4-1) unstable; urgency=medium
+
+  * New upstream version.
+  * Add watch file from irl (Closes: #781597)
+  * Bump Standards Version to 3.9.6.
+  * Bump debian/compat to 9.
+  * Add Homepage field to debian/control
+  * Fix various spelling errors
+
+ -- Colin Tuckley <colint@debian.org>  Thu, 03 Sep 2015 12:21:10 +0100
+
+ax25-tools (0.0.10-rc2+cvs20120204-4) unstable; urgency=medium
+
+  * Bump Standards Version to 3.9.5.
+  * Replace 'restrict' with 'route_restrict' (Closes: #689322)
+    since "restrict" is a keyword in C99.
+  * Explicitly use /bin/bash in rose/rsusers.sh (Closes: #690626)
+  * Fix several minor Lintian warnings.
+
+ -- Colin Tuckley <colint@debian.org>  Mon, 08 Sep 2014 18:08:30 +0100
+
+ax25-tools (0.0.10-rc2+cvs20120204-3) unstable; urgency=low
+
+  * Fix "FTBFS: dh_movefiles: debian/ax25-tools/usr/sbin/xfhdlcchpar not
+    found (supposed to put it in ax25-xtools)" <explain what you changed
+    and why> (Closes: #665236)
+
+ -- Patrick Ouellette <pouelle@debian.org>  Mon, 09 Apr 2012 12:01:16 -0400
+
+ax25-tools (0.0.10-rc2+cvs20120204-2) unstable; urgency=low
+
+  * Fix "kissnetd broken with PTYs" fixed in the new upstream (Closes: #603169)
+  * Fix "beacon crashes if the length of the destination exceeds 20"
+    fixed in the new upstream (Closes: #568290)
+  * Fix FTBFS by adding chmod +x configure to debian/rules
+
+ -- Patrick Ouellette <pouelle@debian.org>  Sun, 26 Feb 2012 20:53:44 -0500
+
+ax25-tools (0.0.10-rc2+cvs20120204-1) unstable; urgency=low
+
+  * new upstream
+
+ -- Patrick Ouellette <pouelle@debian.org>  Sat, 04 Feb 2012 22:14:52 -0500
+
+ax25-tools (0.0.8-13.2) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * ax25/beacon.c: fix possible privilege escalation CVE-2011-2910
+    Closes: #638198.
+
+ -- Luk Claes <luk@debian.org>  Sun, 01 Jan 2012 15:13:41 +0100
+
+ax25-tools (0.0.8-13.1) unstable; urgency=low
+
+  * Retiring - remove myself from the uploaders list.
+
+ -- Joop Stakenborg <pa3aba@debian.org>  Tue, 10 Nov 2009 10:12:01 +0000
+
+ax25-tools (0.0.8-13) unstable; urgency=low
+
+  * Fix broken and bash-specific rsusers program (/usr/sbin/rsusers)
+  * Bump standards-revision to 3.7.3
+  * Remove unnecessary linking to libGL and libXi
+
+ -- Hamish Moffatt <hamish@debian.org>  Wed, 30 Jan 2008 23:04:38 +1100
+
+ax25-tools (0.0.8-12) unstable; urgency=low
+
+  * Add missing bracket around and if clause, file dmascc/dmascc_cfg.c.
+    Closes: #394926.
+  * Various lintian fixes, rename rsusers.sh to rsusers.
+
+ -- Joop Stakenborg <pa3aba@debian.org>  Mon, 12 Nov 2007 19:31:34 +0100
+
+ax25-tools (0.0.8-11) unstable; urgency=low
+
+  * Remove build-dep on autoconf, automake and don't autoreconf
+    at build time, just at development time (closes: #376639)
+  * Added libxt-dev build-dep to ensure that X is discovered at
+    configure time
+
+ -- Hamish Moffatt <hamish@debian.org>  Tue,  4 Jul 2006 20:12:20 +1000
+
+ax25-tools (0.0.8-10) unstable; urgency=low
+
+  * Change build-dep on xlibs-dev to individual libraries
+
+ -- Hamish Moffatt <hamish@debian.org>  Sun,  8 Jan 2006 14:06:40 +1100
+
+ax25-tools (0.0.8-9) unstable; urgency=low
+
+  * Rebuild against libfltk1.1 (rather than libfltk1.1c102)
+  * Update standards-revision to 3.6.2
+  * Update to debhelper 4
+  * Rewrite short descriptions in debian/control
+
+ -- Hamish Moffatt <hamish@debian.org>  Sat, 10 Sep 2005 23:28:08 +0000
+
+ax25-tools (0.0.8-8) unstable; urgency=low
+
+  * Change localstatedir to '/var', so node can find mheard.dat.
+
+ -- Joop Stakenborg <pa3aba@debian.org>  Mon, 11 Jul 2005 21:30:11 +0200
+
+ax25-tools (0.0.8-7) unstable; urgency=low
+
+  * Changed maintainer to debian-hams@lists.debian.org
+  * Changed uploaders to Jaime Robles <jaime@debian.org>,
+     Joop Stakenborg <pa3aba@debian.org>,
+     Patrick Ouellette <pouelle@debian.org>,
+     Hamish Moffatt <hamish@debian.org>,
+     Ramakrishnan Muthukrishnan <rkrishnan@debian.org>
+  * Fixed lintian warnings about copyright file reference
+  * Added reference to original source (a25.sf.net) to copyright file
+
+ -- Patrick Ouellette <pouelle@debian.org>  Thu, 14 Apr 2005 14:03:24 -0400
+
+ax25-tools (0.0.8-6) unstable; urgency=low
+
+  * Accepting/closing prior NMU fixes.  Fixed typo in last changelog
+  * causing it to appear to be an NMU. Priority change to 'extra'
+  * to match overrides.  Closes: #170116, #200997, #229303
+
+ -- Bruce Walker <w1bw@debian.org>  Tue,  2 Mar 2004 11:06:15 -0500
+
+ax25-tools (0.0.8-5) unstable; urgency=low
+
+  * Moved soundmodem.h into source; no longer in kernel sources
+  * (patch from neroden@twcny.rr.com) Closes: #229303
+
+ -- Bruce Walker <w1bw@debian.org>  Tue,  2 Mar 2004 10:01:06 -0500
+
+ax25-tools (0.0.8-4.1) unstable; urgency=low
+
+  * Non-maintainer upload. BSP.
+  * Recompile in order to solve dependency problems. Closes: #200997
+  * Fix autoconf/compiler warnings.
+
+ -- Guus Sliepen <guus@debian.org>  Tue, 26 Aug 2003 21:51:26 +0200
+
+ax25-tools (0.0.8-4) unstable; urgency=low
+
+  * linked with libax25-0.0.11
+
+ -- Bruce Walker <w1bw@debian.org>  Wed, 23 Apr 2003 16:58:47 -0400
+
+ax25-tools (0.0.8-3) unstable; urgency=low
+
+  * new debian maintainer (me)
+  * loosen dependency: automake1.7 --> automake
+
+ -- Bruce Walker <w1bw@debian.org>  Tue,  8 Apr 2003 16:11:55 -0400
+
+ax25-tools (0.0.8-2.1) unstable; urgency=low
+
+  * NMU
+  * Updated xlib6g-dev to xlibs-dev in Build-Depends.  Closes: #170116.
+  * Updated to libfltk1.1-dev to allow compilation with g++ 3.2.
+  * Several autoconf/automake updates needed.
+
+ -- Daniel Schepler <schepler@debian.org>  Fri, 14 Mar 2003 22:07:57 -0800
+
+ax25-tools (0.0.8-2) unstable; urgency=low
+
+  * added /etc/ax25/nrbroadcast to conffiles (closes: #97453)
+  * updated build depends (closes: #101419)
+  * added autoconf to build depends
+
+ -- Patrick Ouellette <pouelle@debian.org>  Sat, 22 Dec 2001 23:07:26 -0500
+
+ax25-tools (0.0.8-1) unstable; urgency=low
+
+  * New upstream release
+  * New maintainer (closes: #89331)
+
+ -- Patrick Ouellette <pouelle@debian.org>  Thu, 24 May 2001 22:19:55 -0500
+
+ax25-tools (0.0.6-2) frozen unstable; urgency=low
+
+  * fixed build-depends: closes: #82258
+
+ -- Craig Small <csmall@debian.org>  Tue, 27 Feb 2001 16:14:37 +1100
+
+ax25-tools (0.0.6-1) frozen unstable; urgency=low
+
+  * New upstream source
+  * Upped standards version and have build-depends Closes: #70175
+  * ttylink.8 fixed in upstream Closes: #53583
+  * rip98.conf -> rip98d.conf Closes: #53654
+  * var directory is now /var/lib/ax25
+
+ -- Craig Small <csmall@debian.org>  Thu, 26 Oct 2000 09:17:36 +1100
+
+ax25-tools (0.0.5-2) frozen unstable; urgency=low
+
+  * Added some tests to fix i386isms Closes: #55552
+
+ -- Craig Small <csmall@debian.org>  Thu, 20 Jan 2000 16:09:10 +1100
+
+ax25-tools (0.0.5-1) unstable; urgency=low
+
+  * New upstream version
+
+ -- Craig Small <csmall@debian.org>  Mon, 23 Aug 1999 12:52:14 +1000
+
+ax25-tools (0.0.4-1) unstable; urgency=low
+
+  * New upstream version Closes: #41832
+
+ -- Craig Small <csmall@debian.org>  Tue, 10 Aug 1999 12:11:57 +1000
+
+ax25-tools (0.0.3-1) unstable; urgency=low
+
+  * New upstream version
+
+ -- Craig Small <csmall@debian.org>  Thu,  8 Jul 1999 14:03:17 +1000
+
+ax25-tools (0.0.2-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Craig Small <csmall@debian.org>  Fri,  4 Jun 1999 14:28:59 +1000

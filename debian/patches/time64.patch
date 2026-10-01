@@ -1,0 +1,28 @@
+Description: Patch long to time_t
+Author: Dave Hibberd <hibby@debian.org>
+Forwarded: no
+Last-Update: 2025-01-09
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/6pack/m6pack.c
++++ b/6pack/m6pack.c
+@@ -384,7 +384,7 @@
+ static void report(struct iface *tty, struct iface **pty, int numptys)
+ {
+ 	int i;
+-	long t;
++	time_t t;
+ 
+ 	time(&t);
+ 	syslog(LOG_INFO, "version %s.", FULL_VER);
+--- a/kiss/mkiss.c
++++ b/kiss/mkiss.c
+@@ -382,7 +382,7 @@
+ static void report(void)
+ {
+ 	int i;
+-	long t;
++	time_t t;
+ 
+ 	time(&t);
+ 	syslog(LOG_INFO, "version %s.", FULL_VER);

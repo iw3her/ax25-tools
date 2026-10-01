@@ -1,0 +1,2 @@
+# /var/ax25 is specified in Debian Hamradio Maintainers Guide section 2.3.9.
+non-standard-dir-in-var [var/ax25/]

@@ -1,0 +1,13 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS=hardening=+all
+export DH_VERBOSE=1
+
+%:
+	dh $@
+
+override_dh_auto_install:
+	dh_auto_install
+	mv $(CURDIR)/debian/tmp/usr/sbin/rsusers.sh $(CURDIR)/debian/tmp/usr/sbin/rsusers
+	$(MAKE) installconf DESTDIR=$(CURDIR)/debian/tmp
+	rm $(CURDIR)/debian/tmp/var/ax25/mheard/mheard.dat
