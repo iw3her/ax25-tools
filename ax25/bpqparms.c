@@ -72,6 +72,7 @@ int main(int argc, char **argv)
 	int cmd, flag;
 	struct ifreq ifr;
 	char dev[40];
+	size_t len;
 	struct bpq_ethaddr addr;
 
 	flag = 0;
@@ -120,14 +121,19 @@ int main(int argc, char **argv)
 	if (!(flag & 0x01) || optind+1 > argc)
 		usage();
 
-	strcpy(dev, argv[optind]);
+	len = strlen(argv[optind]);
+	if (len >= sizeof(ifr.ifr_name)) {
+		fprintf(stderr, "bpqparms: interface name too long - %s\n", argv[optind]);
+		return 1;
+	}
+	memcpy(dev, argv[optind], len + 1);
 
 	if ((flag & 0x02) == 0)
 		memcpy(addr.accept, addr.destination, ETH_ALEN);
 
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
 
-	strcpy(ifr.ifr_name, dev);
+	memcpy(ifr.ifr_name, dev, len + 1);
 	ifr.ifr_data = (caddr_t) &addr;
 
 	if (ioctl(fd, SIOCSBPQETHADDR, &ifr) < 0) {

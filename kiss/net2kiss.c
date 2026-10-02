@@ -317,12 +317,15 @@ static void kiss_packet(int fdif, char *addr,
 			unsigned char *pkt, unsigned int pktlen)
 {
 	struct sockaddr to;
+	size_t len;
 	int i;
 
 	if (pktlen < 2)
 		return;
 	display_kiss_packet("KISS", pkt, pktlen);
-	strncpy(to.sa_data, addr, sizeof(to.sa_data));
+	len = strlen(addr);
+	memset(&to, 0, sizeof(to));
+	memcpy(to.sa_data, addr, len);
 	i = sendto(fdif, pkt, pktlen, 0, &to, sizeof(to));
 	if (i >= 0)
 		return;
@@ -486,6 +489,7 @@ int main(int argc, char *argv[])
 	char *master_name;
 	struct termios termios;
 	int c;
+	size_t len;
 	int errflg = 0;
 	int symlnk = 0;
 	int symlnkforce = 0;
@@ -527,6 +531,12 @@ int main(int argc, char *argv[])
 			"[-z] [-v] ptyname\n", progname);
 		exit(1);
 	}
+	len = strlen(name_iface);
+	if (len == 0 || len >= sizeof(sa.sa_data)) {
+		fprintf(stderr, "%s: interface name must be 1-%zu characters\n",
+			progname, sizeof(sa.sa_data) - 1);
+		exit(1);
+	}
 	openlog(progname, LOG_PID, LOG_DAEMON);
 	if (symlnk) {
 		int fdtty;
@@ -561,11 +571,11 @@ int main(int argc, char *argv[])
 	if (fdif < 0)
 		die("socket");
 	memset(&sa, 0, sizeof(struct sockaddr));
-	memcpy(sa.sa_data, name_iface, sizeof(sa.sa_data));
+	memcpy(sa.sa_data, name_iface, len);
 	sa.sa_family = AF_INET;
 	if (bind(fdif, &sa, sizeof(struct sockaddr)) < 0)
 		die("bind");
-	memcpy(ifr.ifr_name, name_iface, IFNAMSIZ);
+	memcpy(ifr.ifr_name, name_iface, len + 1);
 	if (ioctl(fdif, SIOCGIFFLAGS, &ifr) < 0)
 		die("ioctl SIOCGIFFLAGS");
 	ifr_new = ifr;

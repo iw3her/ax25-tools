@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <unistd.h>
 #include <syslog.h>
 #include <signal.h>
@@ -55,6 +56,8 @@ static void terminate(int sig)
 static int bcast_config_load_ports(void)
 {
 	char buffer[255], port[32], *s;
+	const char *p, *end;
+	size_t len;
 	struct ifreq ifr;
 	FILE *fp;
 
@@ -72,12 +75,30 @@ static int bcast_config_load_ports(void)
 		if (strlen(buffer) == 0 || buffer[0] == '#')
 			continue;
 
-		if (sscanf(buffer, "%s %d %d %d %d",
-				port,
+		if (port_count >= (int)(sizeof(port_list) / sizeof(port_list[0]))) {
+			fprintf(stderr, "netromd: too many broadcast ports\n");
+			return -1;
+		}
+
+		p = buffer;
+		while (isspace((unsigned char)*p))
+			p++;
+		end = p;
+		while (*end != '\0' && !isspace((unsigned char)*end))
+			end++;
+		len = end - p;
+		if (len == 0 || len >= sizeof(port)) {
+			fprintf(stderr, "netromd: invalid port name - %s\n", p);
+			return -1;
+		}
+		memcpy(port, p, len);
+		port[len] = '\0';
+
+		if (sscanf(end, "%d %d %d %d",
 				&port_list[port_count].minimum_obs,
 				&port_list[port_count].default_qual,
 				&port_list[port_count].worst_qual,
-				&port_list[port_count].verbose) == -1) {
+				&port_list[port_count].verbose) != 4) {
 			fprintf(stderr, "netromd: unable to parse: %s", buffer);
 			return -1;
 		}
