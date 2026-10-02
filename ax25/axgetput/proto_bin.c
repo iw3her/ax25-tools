@@ -6,6 +6,8 @@
 
 #include "includes.h"
 
+#include <inttypes.h>
+
 #include "proto_bin.h"
 #include "axgetput.h"
 #include "util.h"
@@ -48,7 +50,7 @@ static unsigned int calc_crc(char *buf, int n, unsigned crc)
 
 /*---------------------------------------------------------------------------*/
 
-static long parse_sfbin_date_to_unix(const char *s)
+static time_t parse_sfbin_date_to_unix(const char *s)
 {
 
 	unsigned long x;
@@ -60,13 +62,13 @@ static long parse_sfbin_date_to_unix(const char *s)
 
 /*---------------------------------------------------------------------------*/
 
-static char * unix_to_sfbin_date_string(long gmt)
+static char * unix_to_sfbin_date_string(time_t gmt)
 {
 
 	static char buf[9];
 	unsigned short s_time, s_date;
 
-	date_unix2dos(((gmt == -1) ? time(NULL) : gmt), &s_time, &s_date);
+	date_unix2dos(((gmt == (time_t)-1) ? time(NULL) : gmt), &s_time, &s_date);
 	sprintf(buf, "%X", ((s_date << 16) + s_time));
 	return buf;
 }
@@ -355,7 +357,7 @@ int bget(void) {
 			close(fddata);
 			return 1;
 		}
-		sprintf(buf, "\r#BIN#%ld#|%d#$%s#%s\r", file_size, crc, unix_to_sfbin_date_string(file_time), get_fixed_filename(filename, file_size, crc, 1));
+		sprintf(buf, "\r#BIN#%lu#|%d#$%s#%s\r", file_size, crc, unix_to_sfbin_date_string(file_time), get_fixed_filename(filename, file_size, crc, 1));
 	} else {
 		file_time = time(NULL);
 		if (!is_stream || do_crc_only) {
@@ -372,7 +374,7 @@ int bget(void) {
 				return 1;
 			}
 			*err_msg = 0;
-			sprintf(buf, "\r#BIN#%ld#|%d#$%s#%s\r", file_size, crc, unix_to_sfbin_date_string(file_time), get_fixed_filename(filename, file_size, crc, 1));
+			sprintf(buf, "\r#BIN#%lu#|%d#$%s#%s\r", file_size, crc, unix_to_sfbin_date_string(file_time), get_fixed_filename(filename, file_size, crc, 1));
 		} else {
 			sprintf(buf, "\r#BIN###$%s#%s\r", unix_to_sfbin_date_string(file_time), get_fixed_filename(filename, 0, 0, 1));
 		}
@@ -386,7 +388,7 @@ int bget(void) {
 
 	if (do_crc_only) {
 		printf("File information for %s:\n", get_fixed_filename(filename, file_size, crc, 1));
-		printf("  size %ld bytes, crc %d, date %s (%ld)\n", file_size, crc, unix_to_sfbin_date_string(file_time), file_time);
+		printf("  size %lu bytes, crc %d, date %s (%" PRIdMAX ")\n", file_size, crc, unix_to_sfbin_date_string(file_time), (intmax_t)file_time);
 		return 0;
 	}
 
