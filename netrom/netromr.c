@@ -157,9 +157,13 @@ void receive_nodes(unsigned char *buffer, int length, ax25_address *neighbour, i
 		return;
 	}
 
-	fgets(neigh_buffer, 90, fp);
-
-	obs_count = atoi(neigh_buffer);
+	if (fgets(neigh_buffer, 90, fp) == NULL ||
+	    netrom_parse_int(neigh_buffer, &obs_count) < 0) {
+		if (logging)
+			syslog(LOG_ERR, "netromr: invalid obsolescence count\n");
+		fclose(fp);
+		return;
+	}
 
 	fclose(fp);
 
@@ -209,12 +213,14 @@ void receive_nodes(unsigned char *buffer, int length, ax25_address *neighbour, i
 		token = strtok(NULL, " ");
 		if (token == NULL)
 			continue;
-		qual = atoi(token);
+		if (netrom_parse_int(token, &qual) < 0)
+			continue;
 
 		token = strtok(NULL, " ");
 		if (token == NULL)
 			continue;
-		lock = atoi(token);
+		if (netrom_parse_int(token, &lock) < 0)
+			continue;
 
 		if (strcmp(callsign, portcall) == 0 &&
 		    strcmp(device, port_list[index].device) == 0 &&

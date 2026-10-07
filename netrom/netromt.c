@@ -101,7 +101,7 @@ static void build_others(int s, int min_obs, struct full_sockaddr_ax25 *dest, in
 	char *nodes_buffer = NULL;
 	char *neigh_buffer = NULL;
 	char *callsign, *mnemonic, *neighbour, *token;
-	int  quality, neigh_no, obs_count;
+	int  quality, neigh_no, obs_count, parsed_neigh_no;
 	int  olen, len;
 	size_t nodes_buffer_capacity = 0;
 	size_t neigh_buffer_capacity = 0;
@@ -158,17 +158,20 @@ static void build_others(int s, int min_obs, struct full_sockaddr_ax25 *dest, in
 			token = strtok(NULL, " ");
 			if (token == NULL)
 				continue;
-			quality = atoi(token);
+			if (netrom_parse_int(token, &quality) < 0)
+				continue;
 
 			token = strtok(NULL, " ");
 			if (token == NULL)
 				continue;
-			obs_count = atoi(token);
+			if (netrom_parse_int(token, &obs_count) < 0)
+				continue;
 
 			token = strtok(NULL, " ");
 			if (token == NULL)
 				continue;
-			neigh_no = atoi(token);
+			if (netrom_parse_int(token, &neigh_no) < 0)
+				continue;
 			neighbour = NULL;
 
 			if (obs_count < min_obs || quality == 0) continue;
@@ -191,7 +194,10 @@ static void build_others(int s, int min_obs, struct full_sockaddr_ax25 *dest, in
 				if (token == NULL)
 					continue;
 
-				if (atoi(token) == neigh_no) {
+				if (netrom_parse_int(token, &parsed_neigh_no) < 0)
+					continue;
+
+				if (parsed_neigh_no == neigh_no) {
 					neighbour = strtok(NULL, " ");
 					if (neighbour != NULL)
 						break;
