@@ -1,10 +1,13 @@
-ax25-tools (0.0.10-rc5+git20250922+c5a9f7f-1) UNRELEASED; urgency=medium
+ax25-tools (0.0.10-rc5+git20250922+c5a9f7f+stackax25.1-1) UNRELEASED; urgency=medium
 
   * Import LinuxHam snapshot c5a9f7f (2025-09-22).
   * Drop Debian time64 and spelling patches already included upstream.
   * Build the LinuxHam Git checkout through the Debian Autotools sequence.
+  * Integrate validated stackAX25 source fixes for KISS, NET/ROM procfs
+    parsing, interface-name handling, time64 formatting and legacy tool
+    robustness.
 
- -- Lorenzo <iw3her.lorenzo@gmail.com>  Thu, 01 Oct 2026 21:54:18 +0200
+ -- Lorenzo <iw3her.lorenzo@gmail.com>  Wed, 07 Oct 2026 17:51:00 +0200
 
 ax25-tools (0.0.10-rc5+git20230513+d3e6d4f-3) unstable; urgency=medium
 
