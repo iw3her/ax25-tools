@@ -131,11 +131,13 @@ static int add_node(int s, unsigned char *buffer, struct nr_route_struct *nr_nod
 void receive_nodes(unsigned char *buffer, int length, ax25_address *neighbour, int index)
 {
 	struct nr_route_struct nr_node;
-	char neigh_buffer[90], *portcall, *p;
+	char neigh_buffer[90], *proc_line = NULL, *portcall, *p;
 	FILE *fp;
 	int s;
 	int quality, obs_count, qual, lock;
-	char *callsign, *device;
+	char *callsign, *device, *token;
+	size_t proc_line_capacity = 0;
+	int line_status;
 
 	if (!validcallsign(neighbour)) {
 		if (debug && logging)
@@ -155,9 +157,13 @@ void receive_nodes(unsigned char *buffer, int length, ax25_address *neighbour, i
 		return;
 	}
 
-	fgets(neigh_buffer, 90, fp);
-
-	obs_count = atoi(neigh_buffer);
+	if (fgets(neigh_buffer, 90, fp) == NULL ||
+	    netrom_parse_int(neigh_buffer, &obs_count) < 0) {
+		if (logging)
+			syslog(LOG_ERR, "netromr: invalid obsolescence count\n");
+		fclose(fp);
+		return;
+	}
 
 	fclose(fp);
 
@@ -176,18 +182,45 @@ void receive_nodes(unsigned char *buffer, int length, ax25_address *neighbour, i
 		return;
 	}
 
-	fgets(neigh_buffer, 90, fp);
+	line_status = netrom_read_line(fp, &proc_line, &proc_line_capacity);
+	if (line_status != NETROM_LINE_OK) {
+		if (line_status == NETROM_LINE_ERROR && logging)
+			syslog(LOG_ERR, "netromr: error reading %s\n", PROC_NR_NEIGH_FILE);
+		fclose(fp);
+		close(s);
+		free(proc_line);
+		return;
+	}
 
 	portcall = ax25_ntoa(neighbour);
 
 	quality = port_list[index].default_qual;
 
-	while (fgets(neigh_buffer, 90, fp) != NULL) {
-		strtok(neigh_buffer, " ");	/* skip addr field */
+	while ((line_status = netrom_read_line(fp, &proc_line,
+			&proc_line_capacity)) == NETROM_LINE_OK) {
+		token = strtok(proc_line, " ");	/* skip addr field */
+		if (token == NULL)
+			continue;
+
 		callsign = strtok(NULL, " ");
+		if (callsign == NULL)
+			continue;
+
 		device   = strtok(NULL, " ");
-		qual     = atoi(strtok(NULL, " "));
-		lock     = atoi(strtok(NULL, " "));
+		if (device == NULL)
+			continue;
+
+		token = strtok(NULL, " ");
+		if (token == NULL)
+			continue;
+		if (netrom_parse_int(token, &qual) < 0)
+			continue;
+
+		token = strtok(NULL, " ");
+		if (token == NULL)
+			continue;
+		if (netrom_parse_int(token, &lock) < 0)
+			continue;
 
 		if (strcmp(callsign, portcall) == 0 &&
 		    strcmp(device, port_list[index].device) == 0 &&
@@ -196,8 +229,11 @@ void receive_nodes(unsigned char *buffer, int length, ax25_address *neighbour, i
 			break;
 		}
 	}
+	if (line_status == NETROM_LINE_ERROR && logging)
+		syslog(LOG_ERR, "netromr: error reading %s\n", PROC_NR_NEIGH_FILE);
 
 	fclose(fp);
+	free(proc_line);
 
 	nr_node.callsign    = *neighbour;
 	memcpy(nr_node.mnemonic, buffer, MNEMONIC_LEN);

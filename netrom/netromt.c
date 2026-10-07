@@ -98,11 +98,14 @@ static void build_others(int s, int min_obs, struct full_sockaddr_ax25 *dest, in
 {
 	char message[300];
 	FILE *fpnodes, *fpneigh;
-	char nodes_buffer[90];
-	char neigh_buffer[90];
-	char *callsign, *mnemonic, *neighbour;
-	int  quality, neigh_no, obs_count;
+	char *nodes_buffer = NULL;
+	char *neigh_buffer = NULL;
+	char *callsign, *mnemonic, *neighbour, *token;
+	int  quality, neigh_no, obs_count, parsed_neigh_no;
 	int  olen, len;
+	size_t nodes_buffer_capacity = 0;
+	size_t neigh_buffer_capacity = 0;
+	int nodes_status, neigh_status;
 
 	fpnodes = fopen(PROC_NR_NODES_FILE, "r");
 	if (fpnodes == NULL) {
@@ -119,19 +122,56 @@ static void build_others(int s, int min_obs, struct full_sockaddr_ax25 *dest, in
 		return;
 	}
 
-	fgets(nodes_buffer, 90, fpnodes);
+	nodes_status = netrom_read_line(fpnodes, &nodes_buffer,
+		&nodes_buffer_capacity);
+	if (nodes_status != NETROM_LINE_OK) {
+		if (nodes_status == NETROM_LINE_ERROR && logging)
+			syslog(LOG_ERR, "netromt: error reading %s\n", PROC_NR_NODES_FILE);
+		fclose(fpnodes);
+		fclose(fpneigh);
+		free(nodes_buffer);
+		free(neigh_buffer);
+		return;
+	}
 
 	do {
 		len = olen = build_header(message);
 
-		while (fgets(nodes_buffer, 90, fpnodes) != NULL) {
+		while ((nodes_status = netrom_read_line(fpnodes, &nodes_buffer,
+				&nodes_buffer_capacity)) == NETROM_LINE_OK) {
 			callsign  = strtok(nodes_buffer, " ");
+			if (callsign == NULL)
+				continue;
+
 			mnemonic  = strtok(NULL, " ");
-			strtok(NULL, " ");	/* skip which field */
-			strtok(NULL, " ");	/* skip number field */
-			quality   = atoi(strtok(NULL, " "));
-			obs_count = atoi(strtok(NULL, " "));
-			neigh_no  = atoi(strtok(NULL, " "));
+			if (mnemonic == NULL)
+				continue;
+
+			token = strtok(NULL, " ");	/* skip which field */
+			if (token == NULL)
+				continue;
+
+			token = strtok(NULL, " ");	/* skip number field */
+			if (token == NULL)
+				continue;
+
+			token = strtok(NULL, " ");
+			if (token == NULL)
+				continue;
+			if (netrom_parse_int(token, &quality) < 0)
+				continue;
+
+			token = strtok(NULL, " ");
+			if (token == NULL)
+				continue;
+			if (netrom_parse_int(token, &obs_count) < 0)
+				continue;
+
+			token = strtok(NULL, " ");
+			if (token == NULL)
+				continue;
+			if (netrom_parse_int(token, &neigh_no) < 0)
+				continue;
 			neighbour = NULL;
 
 			if (obs_count < min_obs || quality == 0) continue;
@@ -142,14 +182,29 @@ static void build_others(int s, int min_obs, struct full_sockaddr_ax25 *dest, in
 
 			fseek(fpneigh, 0L, SEEK_SET);
 
-			fgets(neigh_buffer, 90, fpneigh);
+			neigh_status = netrom_read_line(fpneigh, &neigh_buffer,
+				&neigh_buffer_capacity);
+			if (neigh_status == NETROM_LINE_ERROR && logging)
+				syslog(LOG_ERR, "netromt: error reading %s\n", PROC_NR_NEIGH_FILE);
 
-			while (fgets(neigh_buffer, 90, fpneigh) != NULL) {
-				if (atoi(strtok(neigh_buffer, " ")) == neigh_no) {
+			while (neigh_status == NETROM_LINE_OK &&
+				(neigh_status = netrom_read_line(fpneigh, &neigh_buffer,
+				&neigh_buffer_capacity)) == NETROM_LINE_OK) {
+				token = strtok(neigh_buffer, " ");
+				if (token == NULL)
+					continue;
+
+				if (netrom_parse_int(token, &parsed_neigh_no) < 0)
+					continue;
+
+				if (parsed_neigh_no == neigh_no) {
 					neighbour = strtok(NULL, " ");
-					break;
+					if (neighbour != NULL)
+						break;
 				}
 			}
+			if (neigh_status == NETROM_LINE_ERROR && logging)
+				syslog(LOG_ERR, "netromt: error reading %s\n", PROC_NR_NEIGH_FILE);
 
 			if (neighbour == NULL) {
 				if (logging)
@@ -183,6 +238,8 @@ static void build_others(int s, int min_obs, struct full_sockaddr_ax25 *dest, in
 			if (len + ROUTE_LEN > NODES_PACLEN)
 				break;
 		}
+		if (nodes_status == NETROM_LINE_ERROR && logging)
+			syslog(LOG_ERR, "netromt: error reading %s\n", PROC_NR_NODES_FILE);
 
 		/* Only send it if there is more that just the header */
 		if (len > olen) {
@@ -199,6 +256,8 @@ static void build_others(int s, int min_obs, struct full_sockaddr_ax25 *dest, in
 
 	fclose(fpnodes);
 	fclose(fpneigh);
+	free(nodes_buffer);
+	free(neigh_buffer);
 }
 
 void transmit_nodes(int localval, int pause)

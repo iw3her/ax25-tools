@@ -6,6 +6,8 @@
 
 #include "includes.h"
 
+#include <inttypes.h>
+
 #include "axgetput.h"
 #include "util.h"
 
@@ -159,7 +161,8 @@ char *get_fixed_filename(char *line, long size, unsigned int msg_crc, int genera
     }
   }
   if (!*filename && generate_filename) {
-    sprintf(filename, "unknown-%ld%d%ld.bin", size, msg_crc, time(NULL));
+    sprintf(filename, "unknown-%ld%d%" PRIdMAX ".bin", size, msg_crc,
+      (intmax_t)time(NULL));
   }
   return filename;
 }
@@ -174,14 +177,14 @@ static int day_n[] = { 0,31,59,90,120,151,181,212,243,273,304,334,0,0,0,0 };
 
 /*---------------------------------------------------------------------------*/
 
-long date_dos2unix(unsigned short time,unsigned short date)
+time_t date_dos2unix(unsigned short time,unsigned short date)
 {
 	int month,year;
-	long secs;
+	time_t secs;
 
 	month = ((date >> 5) & 15)-1;
 	year = date >> 9;
-	secs = (time & 31)*2+60*((time >> 5) & 63)+(time >> 11)*3600+86400*
+	secs = (time & 31)*2+60*((time >> 5) & 63)+(time >> 11)*3600+(time_t)86400*
 	    ((date & 31)-1+day_n[month]+(year/4)+year*365-((year & 3) == 0 &&
 	    month < 2 ? 1 : 0)+3653);
 			/* days since 1.1.70 plus 80's leap day */
@@ -192,9 +195,10 @@ long date_dos2unix(unsigned short time,unsigned short date)
 
 /* Convert linear UNIX date to a MS-DOS time/date pair. */
 
-void date_unix2dos(int unix_date,unsigned short *time, unsigned short *date)
+void date_unix2dos(time_t unix_date,unsigned short *time, unsigned short *date)
 {
-	int day,year,nl_day,month;
+	time_t day;
+	int year,nl_day,month;
 
 	*time = (unix_date % 60)/2+(((unix_date/60) % 60) << 5)+
 	    (((unix_date/3600) % 24) << 11);

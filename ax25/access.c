@@ -238,6 +238,7 @@ char *read_pwd (struct passwd *pw, int *pwtype)
 	struct stat statbuf;
 	char pwfile[PATH_MAX + 1];
 	int len;
+	int n;
 	char pwlocation;
 	char buf[2048];
 	int only_systempw = 0;
@@ -319,7 +320,11 @@ char *read_pwd (struct passwd *pw, int *pwtype)
 				   is disabled by administrative configuration.
 				 */
 				if  (!((*pwtype) & PW_CLEARTEXT)) {
-					sprintf(buf, "Failed to find a suitable password in %s\r", pwfile);
+					n = snprintf(buf, sizeof(buf),
+					    "Failed to find a suitable password in %s\r", pwfile);
+					if (n < 0 || (size_t)n >= sizeof(buf))
+						snprintf(buf, sizeof(buf),
+						    "Failed to find a suitable password (path too long)\r");
 					write_ax25(buf, strlen(buf), 1);
 				}
 				goto end;
