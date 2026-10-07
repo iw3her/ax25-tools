@@ -245,6 +245,7 @@ static void do_set_params(int argc, char **argv)
 	char set = 0;
 	int ret;
 	int mask;
+	size_t mode_len;
 
 	ret = hdrvc_hdlcdrv_ioctl(HDLCDRVCTL_DRIVERNAME, &drvname);
 	if (ret < 0) {
@@ -271,8 +272,12 @@ static void do_set_params(int argc, char **argv)
 	newp = curp;
 	while (argc >= 2) {
 		if (!strcasecmp(argv[0], "mode")) {
-			strncpy(newm.data.modename, argv[1],
-				sizeof(newm.data.modename));
+			mode_len = strlen(argv[1]);
+			if (mode_len >= sizeof(newm.data.modename)) {
+				fprintf(stderr, "%s: mode name too long\n", progname);
+				exit(1);
+			}
+			memcpy(newm.data.modename, argv[1], mode_len + 1);
 			set |= 1;
 		} else if (!strcasecmp(argv[0], "io") && mask & HDLCDRV_PARMASK_IOBASE) {
 			newp.data.mp.iobase = strtoul(argv[1], NULL, 0);
