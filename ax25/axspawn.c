@@ -1271,9 +1271,8 @@ static void read_config(void)
 	if (fp == NULL)
 		return;
 
-	while (!feof(fp))
+	while (fgets(buf, sizeof(buf), fp) != NULL)
 	{
-		fgets(buf, sizeof(buf), fp);
 		p = strchr(buf, '#');
 		if (p || (p = strchr(buf, '\n')))
 			*p='\0';
