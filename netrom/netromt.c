@@ -100,7 +100,7 @@ static void build_others(int s, int min_obs, struct full_sockaddr_ax25 *dest, in
 	FILE *fpnodes, *fpneigh;
 	char *nodes_buffer = NULL;
 	char *neigh_buffer = NULL;
-	char *callsign, *mnemonic, *neighbour;
+	char *callsign, *mnemonic, *neighbour, *token;
 	int  quality, neigh_no, obs_count;
 	int  olen, len;
 	size_t nodes_buffer_capacity = 0;
@@ -140,12 +140,35 @@ static void build_others(int s, int min_obs, struct full_sockaddr_ax25 *dest, in
 		while ((nodes_status = netrom_read_line(fpnodes, &nodes_buffer,
 				&nodes_buffer_capacity)) == NETROM_LINE_OK) {
 			callsign  = strtok(nodes_buffer, " ");
+			if (callsign == NULL)
+				continue;
+
 			mnemonic  = strtok(NULL, " ");
-			strtok(NULL, " ");	/* skip which field */
-			strtok(NULL, " ");	/* skip number field */
-			quality   = atoi(strtok(NULL, " "));
-			obs_count = atoi(strtok(NULL, " "));
-			neigh_no  = atoi(strtok(NULL, " "));
+			if (mnemonic == NULL)
+				continue;
+
+			token = strtok(NULL, " ");	/* skip which field */
+			if (token == NULL)
+				continue;
+
+			token = strtok(NULL, " ");	/* skip number field */
+			if (token == NULL)
+				continue;
+
+			token = strtok(NULL, " ");
+			if (token == NULL)
+				continue;
+			quality = atoi(token);
+
+			token = strtok(NULL, " ");
+			if (token == NULL)
+				continue;
+			obs_count = atoi(token);
+
+			token = strtok(NULL, " ");
+			if (token == NULL)
+				continue;
+			neigh_no = atoi(token);
 			neighbour = NULL;
 
 			if (obs_count < min_obs || quality == 0) continue;
@@ -164,9 +187,14 @@ static void build_others(int s, int min_obs, struct full_sockaddr_ax25 *dest, in
 			while (neigh_status == NETROM_LINE_OK &&
 				(neigh_status = netrom_read_line(fpneigh, &neigh_buffer,
 				&neigh_buffer_capacity)) == NETROM_LINE_OK) {
-				if (atoi(strtok(neigh_buffer, " ")) == neigh_no) {
+				token = strtok(neigh_buffer, " ");
+				if (token == NULL)
+					continue;
+
+				if (atoi(token) == neigh_no) {
 					neighbour = strtok(NULL, " ");
-					break;
+					if (neighbour != NULL)
+						break;
 				}
 			}
 			if (neigh_status == NETROM_LINE_ERROR && logging)

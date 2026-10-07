@@ -135,7 +135,7 @@ void receive_nodes(unsigned char *buffer, int length, ax25_address *neighbour, i
 	FILE *fp;
 	int s;
 	int quality, obs_count, qual, lock;
-	char *callsign, *device;
+	char *callsign, *device, *token;
 	size_t proc_line_capacity = 0;
 	int line_status;
 
@@ -194,11 +194,27 @@ void receive_nodes(unsigned char *buffer, int length, ax25_address *neighbour, i
 
 	while ((line_status = netrom_read_line(fp, &proc_line,
 			&proc_line_capacity)) == NETROM_LINE_OK) {
-		strtok(proc_line, " ");	/* skip addr field */
+		token = strtok(proc_line, " ");	/* skip addr field */
+		if (token == NULL)
+			continue;
+
 		callsign = strtok(NULL, " ");
+		if (callsign == NULL)
+			continue;
+
 		device   = strtok(NULL, " ");
-		qual     = atoi(strtok(NULL, " "));
-		lock     = atoi(strtok(NULL, " "));
+		if (device == NULL)
+			continue;
+
+		token = strtok(NULL, " ");
+		if (token == NULL)
+			continue;
+		qual = atoi(token);
+
+		token = strtok(NULL, " ");
+		if (token == NULL)
+			continue;
+		lock = atoi(token);
 
 		if (strcmp(callsign, portcall) == 0 &&
 		    strcmp(device, port_list[index].device) == 0 &&
