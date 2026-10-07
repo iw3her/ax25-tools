@@ -16,6 +16,18 @@
 #define	NODES_PACLEN	256
 #define	ROUTE_LEN	(CALLSIGN_LEN+MNEMONIC_LEN+CALLSIGN_LEN+QUALITY_LEN)
 
+#define NETROM_LINE_ERROR	-1
+#define NETROM_LINE_EOF		0
+#define NETROM_LINE_OK		1
+
+static inline int netrom_read_line(FILE *fp, char **line, size_t *capacity)
+{
+	if (getline(line, capacity, fp) >= 0)
+		return NETROM_LINE_OK;
+
+	return feof(fp) ? NETROM_LINE_EOF : NETROM_LINE_ERROR;
+}
+
 struct port_struct {
 	char *device;
 	char *port;
