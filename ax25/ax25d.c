@@ -128,6 +128,8 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/select.h>
+#include <sys/wait.h>
 
 #include <netax25/ax25.h>
 #include <netrom/netrom.h>
@@ -145,6 +147,7 @@
 
 /* Maximum number of command line arguments for the application we run */
 #define MAX_ARGS	32
+#define WORKOUT_TOKEN_SIZE	1024
 
 #define	FLAG_VALIDCALL	0x01	/* NOTUSED */
 #define	FLAG_NOLOGGING	0x02	/* Don't log this connection */
@@ -192,6 +195,11 @@ static char myAX25Name[10];			/* Room for 'GB9ZZZ-15\0' */
 static char *Port;
 static int Logging		= FALSE;
 
+static const char *PortForLog(void)
+{
+	return Port != NULL ? Port : "<unknown>";
+}
+
 static int ReadConfig(void);
 
 static fd_set fdread;
@@ -199,18 +207,23 @@ static int maxfd = -1;
 
 /*--------------------------------------------------------------------------*/
 
-static void update_maxfd(void)
+static int update_maxfd(void)
 {
 	struct axlist *paxl;
 
 	FD_ZERO(&fdread);
 
 	for (maxfd = -1, paxl = AXL; paxl != NULL && paxl->fd >= 0; paxl = paxl->next) {
+		if (paxl->fd >= FD_SETSIZE)
+			return -1;
+
 		FD_SET(paxl->fd, &fdread);
 
 		if (paxl->fd > maxfd)
 			maxfd = paxl->fd;
 	}
+
+	return 0;
 }
 
 /*--------------------------------------------------------------------------*/
@@ -229,12 +242,10 @@ static void err_config(void)
 
 /*--------------------------------------------------------------------------*/
 
-static void _ReadConfig(int dummy)
-{
-	ReadConfig();
-}
-
-/*--------------------------------------------------------------------------*/
+static volatile sig_atomic_t reload_pending;
+static volatile sig_atomic_t alarm_pending;
+static volatile sig_atomic_t terminate_pending;
+static volatile sig_atomic_t child_pending;
 
 static void reload_timer(int sec)
 {
@@ -245,132 +256,253 @@ static void reload_timer(int sec)
 	itv.it_interval.tv_sec = 0;
 	itv.it_interval.tv_usec = 0;
 	setitimer(ITIMER_REAL, &itv, NULL);
-	signal(SIGALRM, _ReadConfig);
 }
 
 /*--------------------------------------------------------------------------*/
 
 static void SignalHUP(int code)
 {
-	ReadConfig();
+	(void)code;
+	reload_pending = 1;
+}
+
+static void SignalALRM(int code)
+{
+	(void)code;
+	alarm_pending = 1;
+}
+
+static void SignalCHLD(int code)
+{
+	(void)code;
+	child_pending = 1;
 }
 
 static void SignalTERM(int code)
 {
-	if (Logging) {
-		syslog(LOG_INFO, "terminating on SIGTERM\n");
-		closelog();
-	}
-
-	exit(0);
+	(void)code;
+	terminate_pending = 1;
 }
 
-static void WorkoutArgs(int af_type, char *shell, int *argc, char **argv)
+static int build_managed_signal_set(sigset_t *set)
 {
-	char buffer[1024];	/* Maximum arg size */
-	char *sp, *cp;
-	int cnt  = 0;
-	int args = 0;
+	if (sigemptyset(set) < 0)
+		return -1;
+	if (sigaddset(set, SIGHUP) < 0 || sigaddset(set, SIGALRM) < 0 ||
+	    sigaddset(set, SIGTERM) < 0 || sigaddset(set, SIGCHLD) < 0)
+		return -1;
+	return 0;
+}
 
-	for (cp = shell; *cp != '\0'; cp++) {
-		if (isspace(*cp) && cnt != 0) {
-			buffer[cnt]  = '\0';
-			argv[args++] = strdup(buffer);
-			cnt          = 0;
+static int setup_signal_control(sigset_t *managed, sigset_t *oldmask,
+				 sigset_t *waitmask)
+{
+	struct sigaction act;
 
-			if (args == MAX_ARGS - 1) {
-				argv[args] = NULL;
-				*argc = args;
-				return;
-			}
+	if (build_managed_signal_set(managed) < 0)
+		return -1;
+	if (sigprocmask(SIG_BLOCK, managed, oldmask) < 0)
+		return -1;
+	if (sigemptyset(&act.sa_mask) < 0)
+		goto error;
+	act.sa_flags = 0;
+	act.sa_handler = SignalHUP;
+	if (sigaction(SIGHUP, &act, NULL) < 0)
+		goto error;
+	act.sa_handler = SignalALRM;
+	if (sigaction(SIGALRM, &act, NULL) < 0)
+		goto error;
+	act.sa_handler = SignalTERM;
+	if (sigaction(SIGTERM, &act, NULL) < 0)
+		goto error;
+	act.sa_handler = SignalCHLD;
+	if (sigaction(SIGCHLD, &act, NULL) < 0)
+		goto error;
+	*waitmask = *oldmask;
+	if (sigdelset(waitmask, SIGHUP) < 0 || sigdelset(waitmask, SIGALRM) < 0 ||
+	    sigdelset(waitmask, SIGTERM) < 0 || sigdelset(waitmask, SIGCHLD) < 0)
+		goto error;
+	return 0;
 
+error:
+	(void)sigprocmask(SIG_SETMASK, oldmask, NULL);
+	return -1;
+}
+
+static int reset_child_signals(const sigset_t *oldmask)
+{
+	struct sigaction act;
+	sigset_t childmask;
+
+	if (sigemptyset(&act.sa_mask) < 0)
+		return -1;
+	act.sa_flags = 0;
+	act.sa_handler = SIG_DFL;
+	if (sigaction(SIGHUP, &act, NULL) < 0 || sigaction(SIGALRM, &act, NULL) < 0 ||
+	    sigaction(SIGTERM, &act, NULL) < 0 || sigaction(SIGCHLD, &act, NULL) < 0)
+		return -1;
+	childmask = *oldmask;
+	if (sigdelset(&childmask, SIGHUP) < 0 || sigdelset(&childmask, SIGALRM) < 0 ||
+	    sigdelset(&childmask, SIGTERM) < 0 || sigdelset(&childmask, SIGCHLD) < 0)
+		return -1;
+	return sigprocmask(SIG_SETMASK, &childmask, NULL);
+}
+
+static void reap_children(void)
+{
+	int status;
+	pid_t pid;
+
+	for (;;) {
+		pid = waitpid(-1, &status, WNOHANG);
+		if (pid > 0)
 			continue;
-		} else if (isspace(*cp))	/* && !cnt */
+		if (pid < 0 && errno == EINTR)
 			continue;
-
-		if (*cp == '%') {
-			cp++;
-
-			switch (*cp) {
-			case 'd':	/* portname */
-				for (sp = Port; *sp != '\0' && *sp != '-'; sp++)
-					buffer[cnt++] = *sp;
-				break;
-
-			case 'U':	/* username in UPPER */
-				for (sp = User; *sp != '\0' && *sp != '-'; sp++)
-					buffer[cnt++] = toupper(*sp);
-				break;
-
-			case 'u':	/* USERNAME IN lower */
-				for (sp = User; *sp != '\0' && *sp != '-'; sp++)
-					buffer[cnt++] = tolower(*sp);
-				break;
-
-			case 'S':	/* username in UPPER (with SSID) */
-				for (sp = User; *sp != '\0'; sp++)
-					buffer[cnt++] = toupper(*sp);
-				break;
-
-			case 's':	/* USERNAME IN lower (with SSID) */
-				for (sp = User; *sp != '\0'; sp++)
-					buffer[cnt++] = tolower(*sp);
-				break;
-
-			case 'P':	/* nodename in UPPER */
-				if (af_type == AF_NETROM) {
-					for (sp = Node; *sp != '\0' && *sp != '-'; sp++)
-						buffer[cnt++] = toupper(*sp);
-				} else {
-					buffer[cnt++] = '%';
-				}
-				break;
-
-			case 'p':	/* NODENAME IN lower */
-				if (af_type == AF_NETROM) {
-					for (sp = Node; *sp != '\0' && *sp != '-'; sp++)
-						buffer[cnt++] = tolower(*sp);
-				} else {
-					buffer[cnt++] = '%';
-				}
-				break;
-
-			case 'R':	/* nodename in UPPER (with SSID) */
-				if (af_type == AF_NETROM) {
-					for (sp = Node; *sp != '\0'; sp++)
-						buffer[cnt++] = toupper(*sp);
-				} else {
-					buffer[cnt++] = '%';
-				}
-				break;
-
-			case 'r':	/* NODENAME IN lower (with SSID) */
-				if (af_type == AF_NETROM) {
-					for (sp = Node; *sp != '\0'; sp++)
-						buffer[cnt++] = tolower(*sp);
-				} else {
-					buffer[cnt++] = '%';
-				}
-				break;
-
-			case '\0':
-			case '%':
-			default:
-				buffer[cnt++] = '%';
-				break;
-			}
-		} else {
-			buffer[cnt++] = *cp;
-		}
+		return;
 	}
+}
 
-	if (cnt != 0) {
-		buffer[cnt]  = '\0';
-		argv[args++] = strdup(buffer);
+enum workout_error {
+	WORKOUT_OK = 0,
+	WORKOUT_TOO_LONG,
+	WORKOUT_TOO_MANY,
+	WORKOUT_OOM,
+	WORKOUT_INVALID
+};
+
+static void FreeWorkoutArgs(char **argv, int argc)
+{
+	int i;
+
+	for (i = 0; i < argc; i++)
+		free(argv[i]);
+	argv[0] = NULL;
+}
+
+static int WorkoutAddChar(char *buffer, size_t *length, unsigned char c)
+{
+	if (*length >= WORKOUT_TOKEN_SIZE - 1)
+		return WORKOUT_TOO_LONG;
+	buffer[(*length)++] = (char)c;
+	return WORKOUT_OK;
+}
+
+static int WorkoutAddText(char *buffer, size_t *length, const char *text,
+				  int upper, int lower, int stop_ssid)
+{
+	if (text == NULL)
+		return WORKOUT_INVALID;
+	const unsigned char *sp = (const unsigned char *)text;
+	int error;
+
+	while (*sp != '\0' && !(stop_ssid && *sp == '-')) {
+		unsigned char c = *sp++;
+
+		if (upper)
+			c = (unsigned char)toupper(c);
+		else if (lower)
+			c = (unsigned char)tolower(c);
+		error = WorkoutAddChar(buffer, length, c);
+		if (error != WORKOUT_OK)
+			return error;
+	}
+	return WORKOUT_OK;
+}
+
+static int WorkoutArgs(int af_type, char *shell, int *argc, char **argv)
+{
+	char buffer[WORKOUT_TOKEN_SIZE];
+	const unsigned char *cp;
+	size_t count = 0;
+	int args = 0;
+	int error;
+
+	if (shell == NULL || argc == NULL || argv == NULL)
+		return WORKOUT_INVALID;
+	argv[0] = NULL;
+
+	for (cp = (const unsigned char *)shell; ; cp++) {
+		if (*cp == '\0' || isspace(*cp)) {
+			if (count != 0) {
+				if (args >= MAX_ARGS - 1) {
+					FreeWorkoutArgs(argv, args);
+					return WORKOUT_TOO_MANY;
+				}
+				buffer[count] = '\0';
+				argv[args] = strdup(buffer);
+				if (argv[args] == NULL) {
+					FreeWorkoutArgs(argv, args);
+					return WORKOUT_OOM;
+				}
+				args++;
+				count = 0;
+			}
+			if (*cp == '\0')
+				break;
+			continue;
+		}
+
+		if (*cp != '%') {
+			error = WorkoutAddChar(buffer, &count, *cp);
+			if (error != WORKOUT_OK)
+				goto error_exit;
+			continue;
+		}
+
+		cp++;
+		if (*cp == '\0') {
+			error = WorkoutAddChar(buffer, &count, '%');
+			if (error != WORKOUT_OK)
+				goto error_exit;
+			cp--;
+			continue;
+		}
+
+		switch (*cp) {
+		case 'd':
+			error = WorkoutAddText(buffer, &count, Port, 0, 0, 1);
+			break;
+		case 'U':
+			error = WorkoutAddText(buffer, &count, User, 1, 0, 1);
+			break;
+		case 'u':
+			error = WorkoutAddText(buffer, &count, User, 0, 1, 1);
+			break;
+		case 'S':
+			error = WorkoutAddText(buffer, &count, User, 1, 0, 0);
+			break;
+		case 's':
+			error = WorkoutAddText(buffer, &count, User, 0, 1, 0);
+			break;
+		case 'P':
+			error = af_type == AF_NETROM ? WorkoutAddText(buffer, &count, Node, 1, 0, 1) : WorkoutAddChar(buffer, &count, '%');
+			break;
+		case 'p':
+			error = af_type == AF_NETROM ? WorkoutAddText(buffer, &count, Node, 0, 1, 1) : WorkoutAddChar(buffer, &count, '%');
+			break;
+		case 'R':
+			error = af_type == AF_NETROM ? WorkoutAddText(buffer, &count, Node, 1, 0, 0) : WorkoutAddChar(buffer, &count, '%');
+			break;
+		case 'r':
+			error = af_type == AF_NETROM ? WorkoutAddText(buffer, &count, Node, 0, 1, 0) : WorkoutAddChar(buffer, &count, '%');
+			break;
+		case '%':
+		default:
+			error = WorkoutAddChar(buffer, &count, '%');
+			break;
+		}
+		if (error != WORKOUT_OK)
+			goto error_exit;
 	}
 
 	argv[args] = NULL;
-	*argc      = args;
+	*argc = args;
+	return WORKOUT_OK;
+
+error_exit:
+	FreeWorkoutArgs(argv, args);
+	return error;
 }
 
 static void SetupOptions(int new, struct axlist *axl)
@@ -514,9 +646,9 @@ static int ReadConfig(void)
 	int af_type = 0;	/* Keep GCC happy */
 	int line = 0;
 	int hunt = TRUE, error = FALSE;
+	int build_error = FALSE;
 	int parameters = 0;
 
-	signal(SIGALRM, SIG_IGN);
 	memset(&axl_defaults, 0, sizeof(axl_defaults));
 
 	fp = fopen(ConfigFile, "r");
@@ -694,6 +826,7 @@ static int ReadConfig(void)
 				free(axl_port->port);
 				free(axl_port);
 				error = TRUE;
+				build_error = TRUE;
 				reload_timer(60);
 				continue;
 			}
@@ -704,6 +837,7 @@ static int ReadConfig(void)
 				free(axl_port->port);
 				free(axl_port);
 				error = TRUE;
+				build_error = TRUE;
 				reload_timer(60);
 				continue;
 			}
@@ -714,6 +848,7 @@ static int ReadConfig(void)
 				free(axl_port->port);
 				free(axl_port);
 				error = TRUE;
+				build_error = TRUE;
 				reload_timer(60);
 				continue;
 			}
@@ -978,9 +1113,11 @@ ignore:
 
 BadLine:
 		fprintf(stderr, "ax25d: bad config entry on line %d\n", line);
+		build_error = TRUE;
 		continue;
 
 BadUID:
+		build_error = TRUE;
 		if (axl_ent->call != NULL)
 			free(axl_ent->call);
 		free(axl_ent);
@@ -990,6 +1127,7 @@ BadArgsFree2:
 		if (axl_ent->exec != NULL)
 			free(axl_ent->exec);
 BadArgsFree:
+		build_error = TRUE;
 		if (axl_ent->call != NULL)
 			free(axl_ent->call);
 		free(axl_ent);
@@ -1001,13 +1139,25 @@ BadArgsFree:
 
 	fclose(fp);
 
+	if (build_error)
+		goto Error;
+
+	/* Validate the temporary listener set before publishing it. */
+	for (axltmp = axl_build; axltmp != NULL; axltmp = axltmp->next) {
+		if (axltmp->fd < 0 || axltmp->fd >= FD_SETSIZE) {
+			fprintf(stderr, "ax25d: listener descriptor exceeds FD_SETSIZE\n");
+			goto Error;
+		}
+	}
+
 	AXL = ClearList(AXL);
 	AXL = axl_build;		/* Assign our built list to AXL */
 
 	if (Logging)
 		syslog(LOG_INFO, "new config file loaded successfully");
 
-	update_maxfd();
+	if (update_maxfd() < 0 && Logging)
+		syslog(LOG_ERR, "listener descriptor exceeds FD_SETSIZE");
 	return 0;
 
 Error:
@@ -1038,8 +1188,11 @@ int main(int argc, char *argv[])
 		struct full_sockaddr_ax25 ax25;
 		struct sockaddr_rose rose;
 	} sockaddr;
-	struct sigaction act, oact;
+	sigset_t managed_signals;
+	sigset_t old_signal_mask;
+	sigset_t wait_signal_mask;
 	socklen_t addrlen;
+	int wait_result;
 	int cnt;
 	char buf[1024];
 	char *p;
@@ -1084,27 +1237,64 @@ int main(int argc, char *argv[])
 		syslog(LOG_INFO, "starting");
 	}
 
-	act.sa_handler = SignalHUP;
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = 0;
-	sigaction(SIGHUP, &act, &oact);
-
-	act.sa_handler = SignalTERM;
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = 0;
-	sigaction(SIGTERM, &act, &oact);
+	if (setup_signal_control(&managed_signals, &old_signal_mask,
+				 &wait_signal_mask) < 0) {
+		fprintf(stderr, "ax25d: cannot configure signal handling: %s\n",
+			strerror(errno));
+		return 1;
+	}
 
 	ReadConfig();
 
 	for (;;) {
-
-		update_maxfd();
-		if (maxfd < 0) {
-			sleep(10);
-			continue;
+		if (terminate_pending) {
+			terminate_pending = 0;
+			AXL = ClearList(AXL);
+			reap_children();
+			if (Logging) {
+				syslog(LOG_INFO, "terminating on SIGTERM\n");
+				closelog();
+			}
+			(void)sigprocmask(SIG_SETMASK, &old_signal_mask, NULL);
+			return 0;
 		}
 
-		if (select(maxfd + 1, &fdread, NULL, NULL, NULL) <= 0)
+		if (child_pending) {
+			child_pending = 0;
+			reap_children();
+		}
+
+		if (reload_pending || alarm_pending) {
+			reload_pending = 0;
+			alarm_pending = 0;
+			ReadConfig();
+		}
+
+		if (update_maxfd() < 0) {
+			if (Logging)
+				syslog(LOG_ERR, "too many listener descriptors");
+			AXL = ClearList(AXL);
+			if (Logging)
+				closelog();
+			(void)sigprocmask(SIG_SETMASK, &old_signal_mask, NULL);
+			return 1;
+		}
+
+		wait_result = pselect(maxfd + 1, &fdread, NULL, NULL, NULL,
+					 &wait_signal_mask);
+		if (wait_result < 0) {
+			if (errno == EINTR)
+				continue;
+			if (Logging)
+				syslog(LOG_ERR, "pselect error: %s", strerror(errno));
+			AXL = ClearList(AXL);
+			if (Logging)
+				closelog();
+			(void)sigprocmask(SIG_SETMASK, &old_signal_mask, NULL);
+			return 1;
+		}
+
+		if (wait_result == 0)
 			continue;
 
 		for (paxl = AXL; paxl != NULL; paxl = paxl->next) {
@@ -1211,13 +1401,13 @@ int main(int argc, char *argv[])
 					if (Logging && !(paxl->flags & FLAG_NOLOGGING)) {
 						switch (paxl->af_type) {
 						case AF_AX25:
-							syslog(LOG_INFO, "AX.25 %s (%s) rejected - no default", User, Port);
+							syslog(LOG_INFO, "AX.25 %s (%s) rejected - no default", User, PortForLog());
 							break;
 						case AF_NETROM:
-							syslog(LOG_INFO, "NET/ROM %s@%s (%s) rejected - no default", User, Node, Port);
+							syslog(LOG_INFO, "NET/ROM %s@%s (%s) rejected - no default", User, Node, PortForLog());
 							break;
 						case AF_ROSE:
-							syslog(LOG_INFO, "Rose %s@%s (%s) rejected - no default", User, Node, Port);
+							syslog(LOG_INFO, "Rose %s@%s (%s) rejected - no default", User, Node, PortForLog());
 							break;
 						}
 					}
@@ -1230,13 +1420,13 @@ int main(int argc, char *argv[])
 					if (Logging && !(paxl->flags & FLAG_NOLOGGING)) {
 						switch (raxl->af_type) {
 						case AF_AX25:
-							syslog(LOG_INFO, "AX.25 %s (%s) rejected - port locked", User, Port);
+							syslog(LOG_INFO, "AX.25 %s (%s) rejected - port locked", User, PortForLog());
 							break;
 						case AF_NETROM:
-							syslog(LOG_INFO, "NET/ROM %s@%s (%s) rejected - port locked", User, Node, Port);
+							syslog(LOG_INFO, "NET/ROM %s@%s (%s) rejected - port locked", User, Node, PortForLog());
 							break;
 						case AF_ROSE:
-							syslog(LOG_INFO, "Rose %s@%s (%s) rejected - port locked", User, Node, Port);
+							syslog(LOG_INFO, "Rose %s@%s (%s) rejected - port locked", User, Node, PortForLog());
 							break;
 						}
 					}
@@ -1247,7 +1437,7 @@ int main(int argc, char *argv[])
 				if (raxl->af_type == AF_AX25 && (raxl->flags & FLAG_NODIGIS) && sockaddr.ax25.fsa_ax25.sax25_ndigis != 0) {
 					/* Not allowed to uplink via digi's */
 					if (Logging && !(paxl->flags & FLAG_NOLOGGING))
-						syslog(LOG_INFO, "AX.25 %s (%s) rejected - digipeaters", User, Port);
+						syslog(LOG_INFO, "AX.25 %s (%s) rejected - digipeaters", User, PortForLog());
 					close(new);
 					continue;
 				}
@@ -1267,6 +1457,8 @@ int main(int argc, char *argv[])
 					break;			/* Oh well... */
 
 				case 0:
+					if (reset_child_signals(&old_signal_mask) < 0)
+						exit(1);
 
 					if (raxl->af_type == AF_AX25 && raxl->checkVC) {
 						/* to which of my own addresses has the user connected? */
@@ -1295,14 +1487,14 @@ int main(int argc, char *argv[])
 
 						if (raxl->checkVC > 1) {
 							if (Logging && (!(paxl->flags & FLAG_NOLOGGING) || raxl->LoggingVC))
-								syslog((raxl->LoggingVC ? LOG_NOTICE : LOG_INFO), "AX.25 %s (%s:%s) rejected - AX25.IP-VC entry found", User, Port, myAX25Name);
+								syslog((raxl->LoggingVC ? LOG_NOTICE : LOG_INFO), "AX.25 %s (%s:%s) rejected - AX25.IP-VC entry found", User, PortForLog(), myAX25Name);
 							goto close_link;
 						}
 
 						/* checkVC == 1: wait for data */
 						if (Logging && (!(paxl->flags & FLAG_NOLOGGING) || raxl->LoggingVC)) {
 							syslog((raxl->LoggingVC ? LOG_NOTICE : LOG_INFO), "AX.25 %s (%s:%s) AX25.IP-VC host connected. %s",
-								User, Port, myAX25Name,
+								User, PortForLog(), myAX25Name,
 								(raxl->VCloginEnable ? "waiting for first PID=text packet for triggered login" : "discarding PID=text packets"));
 						}
 
@@ -1312,7 +1504,7 @@ int main(int argc, char *argv[])
 							buf[i] = 0;
 							if (Logging && raxl->LoggingVC > 1) {
 								/* debug */
-								syslog((LOG_DEBUG), "DEBUG: AX.25 %s (%s:%s) AX25.IP-VC host said: >%s<", User, Port, myAX25Name, buf);
+								syslog((LOG_DEBUG), "DEBUG: AX.25 %s (%s:%s) AX25.IP-VC host said: >%s<", User, PortForLog(), myAX25Name, buf);
 							}
 							/* skip leading mess */
 							for (p = buf; *p && (isspace(*p & 0xff) || *p == '\r'); p++) ;
@@ -1344,7 +1536,7 @@ int main(int argc, char *argv[])
 							syslog((raxl->LoggingVC ? LOG_NOTICE : LOG_INFO),
 									"AX.25 %s (%s:%s) AX25.IP-VC host disconnected%s%s",
 									User,
-									Port,
+									PortForLog(),
 									myAX25Name,
 									(mesg ? ": " : "."),
 									(mesg ? mesg : ""));
@@ -1360,18 +1552,22 @@ login:
 					/* setproctitle("ax25d [%s]: login", User); */
 
 					SetupOptions(new, raxl);
-					WorkoutArgs(raxl->af_type, raxl->shell, &argc, argv);
+					if (WorkoutArgs(raxl->af_type, raxl->shell, &argc, argv) != WORKOUT_OK) {
+						syslog(LOG_ERR, "cannot construct exec arguments");
+						close(new);
+						exit(1);
+					}
 
 					if (Logging && !(paxl->flags & FLAG_NOLOGGING)) {
 						switch (paxl->af_type) {
 						case AF_AX25:
-						syslog(LOG_INFO, "AX.25 %s (%s) %s", User, Port, argv[0]);
+						syslog(LOG_INFO, "AX.25 %s (%s) %s", User, PortForLog(), argv[0]);
 							break;
 						case AF_NETROM:
-							syslog(LOG_INFO, "NET/ROM %s@%s (%s) %s", User, Node, Port, argv[0]);
+							syslog(LOG_INFO, "NET/ROM %s@%s (%s) %s", User, Node, PortForLog(), argv[0]);
 							break;
 						case AF_ROSE:
-							syslog(LOG_INFO, "Rose %s@%s (%s) %s", User, Node, Port, argv[0]);
+							syslog(LOG_INFO, "Rose %s@%s (%s) %s", User, Node, PortForLog(), argv[0]);
 							break;
 						}
 					}
